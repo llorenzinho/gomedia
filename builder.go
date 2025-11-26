@@ -1,5 +1,9 @@
 package gomedia
 
+import (
+	"github.com/llorenzinho/gomedia/database"
+)
+
 type Option func(*MediaStoreConfig)
 
 func WithStaticCredentials(accessKeyID, secretAccessKey string) Option {
@@ -33,7 +37,12 @@ func WithTimeoutSeconds(timeout uint16) Option {
 	}
 }
 
-func NewMediaStore(provider mediaProvider, bucket string, opts ...Option) (MediaStorer, error) {
+func NewMediaStore(
+	provider mediaProvider,
+	bucket string,
+	db *database.MediaService,
+	opts ...Option,
+) (MediaStorer, error) {
 	config := &MediaStoreConfig{
 		BucketName: bucket,
 		SslEnabled: false,
@@ -43,7 +52,7 @@ func NewMediaStore(provider mediaProvider, bucket string, opts ...Option) (Media
 	}
 	switch provider {
 	case MediaProviderMinio:
-		return NewMinioMetaStore(*config)
+		return NewMinioMetaStore(*config, db)
 	default:
 		return nil, ErrUnsupportedMediaProvider{}
 	}

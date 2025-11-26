@@ -1,9 +1,10 @@
-package gomedia
+package gomedia_test
 
 import (
 	"context"
 	"testing"
 
+	"github.com/llorenzinho/gomedia"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -47,7 +48,7 @@ func createMinioStore(t *testing.T) (*testcontainers.DockerContainer, func()) {
 	return minio, cleanup
 }
 
-func TestMinio(t *testing.T) {
+func TestMinioHealth(t *testing.T) {
 	ctx := context.Background()
 	minio, cleanup := createMinioStore(t)
 	defer cleanup()
@@ -61,11 +62,12 @@ func TestMinio(t *testing.T) {
 		t.Fatalf("failed to get minio port: %v", err)
 	}
 
-	m, err := NewMediaStore(
-		MediaProviderMinio,
+	m, err := gomedia.NewMediaStore(
+		gomedia.MediaProviderMinio,
 		"test-bucket",
-		WithEndpoint(endpoint+":"+port.Port()),
-		WithStaticCredentials("minioadmin", "minioadmin"),
+		nil,
+		gomedia.WithEndpoint(endpoint+":"+port.Port()),
+		gomedia.WithStaticCredentials("minioadmin", "minioadmin"),
 	)
 	if err != nil {
 		t.Fatalf("failed to create minio media store: %v", err)

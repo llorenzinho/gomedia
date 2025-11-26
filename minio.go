@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/llorenzinho/gomedia/database"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -12,9 +13,10 @@ import (
 type MinioMetaStore struct {
 	config MediaStoreConfig
 	client *minio.Client
+	db     *database.MediaService
 }
 
-func NewMinioMetaStore(config MediaStoreConfig) (*MinioMetaStore, error) {
+func NewMinioMetaStore(config MediaStoreConfig, db *database.MediaService) (*MinioMetaStore, error) {
 	opts := minio.Options{
 		Secure: config.SslEnabled,
 	}
@@ -33,10 +35,11 @@ func NewMinioMetaStore(config MediaStoreConfig) (*MinioMetaStore, error) {
 	return &MinioMetaStore{
 		config: config,
 		client: client,
+		db:     db,
 	}, nil
 }
 
-func (m *MinioMetaStore) saveMedia(data *io.Reader, objectPath string, metaData map[string]string) error {
+func (m *MinioMetaStore) saveMedia(data *io.Reader, objectPath string, metaData map[string]string, tags map[string]string) error {
 	_, err := m.client.PutObject(
 		context.Background(), // TODO: manage context
 		m.config.BucketName,
@@ -45,7 +48,8 @@ func (m *MinioMetaStore) saveMedia(data *io.Reader, objectPath string, metaData 
 		-1, // TODO: manage size
 		minio.PutObjectOptions{
 			UserMetadata: metaData,
-			ContentType:  "application/octet-astream",
+			UserTags:     tags,
+			// ContentType:  "application/octet-astream",
 		},
 	)
 	return err
@@ -53,7 +57,7 @@ func (m *MinioMetaStore) saveMedia(data *io.Reader, objectPath string, metaData 
 
 func (m *MinioMetaStore) HealthCheck() error {
 	var emptyReader io.Reader = bytes.NewReader([]byte{})
-	err := m.saveMedia(&emptyReader, "healthcheck-object", nil)
+	err := m.saveMedia(&emptyReader, "healthcheck-object", nil, nil)
 	return err
 }
 
