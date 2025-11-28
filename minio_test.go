@@ -2,56 +2,29 @@ package gomedia_test
 
 import (
 	"context"
+	"io"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/llorenzinho/gomedia"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/llorenzinho/gomedia/database"
+	"github.com/llorenzinho/gomedia/testutils"
+	"gorm.io/driver/postgres"
 )
-
-func createMinioStore(t *testing.T) (*testcontainers.DockerContainer, func()) {
-	ctx := context.Background()
-	minio, err := testcontainers.Run(
-		ctx,
-		"minio/minio:latest",
-		testcontainers.WithEnv(map[string]string{
-			"MINIO_ROOT_USER":     "minioadmin",
-			"MINIO_ROOT_PASSWORD": "minioadmin",
-		}),
-		testcontainers.WithCmd("server", "/data", "--console-address", ":9001"),
-		testcontainers.WithExposedPorts("9000/tcp", "9001/tcp"),
-		testcontainers.WithWaitStrategy(wait.ForListeningPort("9001/tcp")),
-	)
-	if err != nil {
-		t.Fatalf("failed to start minio container: %v", err)
-	}
-
-	bucketName := "test-bucket"
-	aliasName := "local"
-	minioURL := "http://127.0.0.1:9000"
-	accessKey := "minioadmin"
-	secretKey := "minioadmin"
-
-	aliasCmd := []string{"mc", "alias", "set", aliasName, minioURL, accessKey, secretKey}
-	if _, _, err := minio.Exec(ctx, aliasCmd); err != nil {
-		t.Fatalf("failed to set MinIO alias: %v", err)
-	}
-
-	createBucketCmd := []string{"mc", "mb", aliasName + "/" + bucketName}
-	if _, _, err := minio.Exec(ctx, createBucketCmd); err != nil {
-		t.Fatalf("failed to create bucket: %v", err)
-	}
-
-	cleanup := func() {
-		_ = minio.Terminate(ctx)
-	}
-	return minio, cleanup
-}
 
 func TestMinioHealth(t *testing.T) {
 	ctx := context.Background()
-	minio, cleanup := createMinioStore(t)
+	minio, cleanup := testutils.CreateMinioStore(t)
 	defer cleanup()
+	_, dsn, cleanupDb := testutils.CreateDatabase(t)
+	defer cleanupDb()
+	dbsvc := database.NewMediaService(
+		postgres.Open(dsn),
+		database.WithPoolMaxLifetime(10*time.Minute),
+		database.WithPoolMaxIdleConns(10),
+		database.WithPoolMaxOpenConns(100),
+	)
 
 	endpoint, err := minio.Host(ctx)
 	if err != nil {
@@ -65,7 +38,7 @@ func TestMinioHealth(t *testing.T) {
 	m, err := gomedia.NewMediaStore(
 		gomedia.MediaProviderMinio,
 		"test-bucket",
-		nil,
+		dbsvc,
 		gomedia.WithEndpoint(endpoint+":"+port.Port()),
 		gomedia.WithStaticCredentials("minioadmin", "minioadmin"),
 	)
@@ -75,5 +48,72 @@ func TestMinioHealth(t *testing.T) {
 	err = m.HealthCheck()
 	if err != nil {
 		t.Fatalf("minio health check failed: %v", err)
+	}
+}
+
+func TestMinioUpload(t *testing.T) {
+	ctx := context.Background()
+	minio, cleanup := testutils.CreateMinioStore(t)
+	defer cleanup()
+
+	_, dsn, cleanupDb := testutils.CreateDatabase(t)
+	defer cleanupDb()
+	dbsvc := database.NewMediaService(
+		postgres.Open(dsn),
+		database.WithPoolMaxLifetime(10*time.Minute),
+		database.WithPoolMaxIdleConns(10),
+		database.WithPoolMaxOpenConns(100),
+	)
+	err := dbsvc.AutoMigrate()
+	if err != nil {
+		t.Fatalf("failed to migrate database: %v", err)
+	}
+
+	endpoint, err := minio.Host(ctx)
+	if err != nil {
+		t.Fatalf("failed to get minio host: %v", err)
+	}
+	port, err := minio.MappedPort(ctx, "9000")
+	if err != nil {
+		t.Fatalf("failed to get minio port: %v", err)
+	}
+
+	m, err := gomedia.NewMediaStore(
+		gomedia.MediaProviderMinio,
+		"test-bucket",
+		dbsvc,
+		gomedia.WithEndpoint(endpoint+":"+port.Port()),
+		gomedia.WithStaticCredentials("minioadmin", "minioadmin"),
+	)
+	if err != nil {
+		t.Fatalf("failed to create minio media store: %v", err)
+	}
+
+	content := "Hello, MinIO!"
+	media := gomedia.Media{
+		MediaMeta: gomedia.MediaMeta{
+			Name: "hello.txt",
+		},
+		Reader: strings.NewReader(content),
+	}
+
+	cm, err := m.SaveMedia(&media.Reader, media.MediaMeta)
+	if err != nil {
+		t.Fatalf("failed to save media: %v", err)
+	}
+
+	retrievedMedia, err := m.GetMediaReader(cm.ID)
+	if err != nil {
+		t.Fatalf("failed to get media reader: %v", err)
+	}
+
+	buf := new(strings.Builder)
+	_, err = io.Copy(buf, retrievedMedia.Reader)
+	if err != nil {
+		t.Fatalf("failed to read media content: %v", err)
+	}
+
+	if buf.String() != content {
+		t.Fatalf("media content mismatch: expected %q, got %q", content, buf.String())
 	}
 }

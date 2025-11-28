@@ -23,5 +23,5 @@ type MediaMeta struct {
 
 type Media struct {
 	MediaMeta
-	Reader *io.ReadCloser
+	Reader io.Reader
 }

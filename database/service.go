@@ -70,8 +70,9 @@ func (s *MediaService) GetMedia(id uint) *Media {
 	return &media
 }
 
-func (s *MediaService) CreateMedia(medias ...*Media) []*Media {
+func (s *MediaService) CreateMedia(medias ...*Media) error {
 	if len(medias) == 0 {
+		log.Println("No medias to create")
 		return nil
 	}
 	wg := sync.WaitGroup{}
@@ -93,10 +94,10 @@ func (s *MediaService) CreateMedia(medias ...*Media) []*Media {
 	close(ec)
 	if len(ec) > 0 {
 		tx.Rollback()
-		return nil
+		return <-ec // TODO: concatenate errors
 	}
 	tx.Commit()
-	return ms
+	return nil
 }
 
 func (s *MediaService) DeleteMedia(id ...uint) []*Media {

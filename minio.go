@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log"
+	"strconv"
 
 	"github.com/llorenzinho/gomedia/database"
 	"github.com/minio/minio-go/v7"
@@ -17,6 +19,9 @@ type MinioMetaStore struct {
 }
 
 func NewMinioMetaStore(config MediaStoreConfig, db *database.MediaService) (*MinioMetaStore, error) {
+	if db == nil {
+		return nil, ErrNilDatabaseService{}
+	}
 	opts := minio.Options{
 		Secure: config.SslEnabled,
 	}
@@ -61,18 +66,39 @@ func (m *MinioMetaStore) HealthCheck() error {
 	return err
 }
 
-func (m *MinioMetaStore) SaveMedia(r *io.Reader, meta MediaMeta) (string, error) {
-	return "", nil
+func (m *MinioMetaStore) SaveMedia(r *io.Reader, meta MediaMeta) (*database.Media, error) {
+	buf := &bytes.Buffer{}
+	size, err := io.Copy(buf, *r)
+	if err != nil {
+		return nil, err
+	}
+	mediaEntity := &database.Media{
+		Filename: meta.Name,
+		Size:     size,
+	}
+	err = m.db.CreateMedia(mediaEntity)
+	if err != nil {
+		return nil, err
+	}
+	err = m.saveMedia(r, strconv.Itoa(int(mediaEntity.ID)), *meta.MetaData, nil)
+	if err != nil {
+		dms := m.db.DeleteMedia(mediaEntity.ID)
+		if len(dms) <= 0 {
+			log.Println("Warning: failed to rollback media entity after MinIO upload failure for media ID", mediaEntity.ID)
+		}
+		return nil, err
+	}
+	return mediaEntity, nil
 }
 
-func (m *MinioMetaStore) DeleteMedia(id string) error {
+func (m *MinioMetaStore) DeleteMedia(id uint) error {
 	return nil
 }
 
-func (m *MinioMetaStore) GetMediaURL(id string) (*string, error) {
+func (m *MinioMetaStore) GetMediaURL(id uint) (*string, error) {
 	return nil, nil
 }
 
-func (m *MinioMetaStore) GetMediaReader(id string) (*Media, error) {
+func (m *MinioMetaStore) GetMediaReader(id uint) (*Media, error) {
 	return nil, nil
 }
