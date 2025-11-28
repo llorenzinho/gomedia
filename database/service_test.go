@@ -71,7 +71,11 @@ func TestMediaCreation(t *testing.T) {
 		Filename: "file3.mp4",
 		Size:     8192,
 	}
-	err = dbsvc.CreateMedia(media2, media3)
+	err = dbsvc.CreateMedia(media2)
+	if err != nil {
+		t.Fatalf("failed to create media: %v", err)
+	}
+	err = dbsvc.CreateMedia(media3)
 	if err != nil {
 		t.Fatalf("failed to create media: %v", err)
 	}

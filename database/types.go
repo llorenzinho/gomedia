@@ -8,4 +8,5 @@ type Media struct {
 	Filename  string `gorm:"index"`
 	Size      int64
 	BasePath  *string
+	Check     bool
 }

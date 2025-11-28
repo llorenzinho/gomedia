@@ -18,7 +18,7 @@ type MediaStoreConfig struct {
 
 type MediaMeta struct {
 	Name     string
-	MetaData *map[string]string
+	MetaData map[string]string
 }
 
 type Media struct {

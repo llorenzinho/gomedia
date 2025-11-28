@@ -70,37 +70,14 @@ func (s *MediaService) GetMedia(id uint) *Media {
 	return &media
 }
 
-func (s *MediaService) CreateMedia(medias ...*Media) error {
-	if len(medias) == 0 {
-		log.Println("No medias to create")
-		return nil
-	}
-	wg := sync.WaitGroup{}
+func (s *MediaService) CreateMedia(media *Media) error {
 	tx := s.db.Begin()
-	ec := make(chan error, len(medias))
-	ms := make([]*Media, 0, len(medias))
-	for _, media := range medias {
-		wg.Go(func() {
-			result := tx.Create(media)
-			if result.Error != nil {
-				log.Println("Error while creating media", media.Filename, ":", result.Error)
-				ec <- result.Error
-				return
-			}
-			ms = append(ms, media)
-		})
-	}
-	wg.Wait()
-	close(ec)
-	if len(ec) > 0 {
-		tx.Rollback()
-		return <-ec // TODO: concatenate errors
-	}
+	tx.Create(media)
 	tx.Commit()
 	return nil
 }
 
-func (s *MediaService) DeleteMedia(id ...uint) []*Media {
+func (s *MediaService) DeleteMedias(id ...uint) []*Media {
 	if len(id) == 0 {
 		return nil
 	}
@@ -134,4 +111,9 @@ func (s *MediaService) DeleteMedia(id ...uint) []*Media {
 	}
 	tx.Commit()
 	return ms
+}
+
+func (s *MediaService) CheckMedia(id uint) error {
+	result := s.db.Model(&Media{}).Where("id = ?", id).Update("check", true)
+	return result.Error
 }
