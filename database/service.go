@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -68,7 +67,7 @@ func (s *MediaService) GetMedia(id uint) *Media {
 	media := &Media{}
 	result := s.db.First(media, id)
 	if result.Error != nil {
-		s.l.Error().Err(result.Error).Msg(fmt.Sprintf("Failed to get media with id %d", id))
+		s.l.Error().Err(result.Error).Msgf("Failed to get media with id %d", id)
 		return nil
 	}
 	return media
@@ -94,13 +93,13 @@ func (s *MediaService) DeleteMedias(id ...uint) []*Media {
 			var media Media
 			result := tx.First(&media, mediaID)
 			if result.Error != nil {
-				s.l.Error().Err(result.Error).Msg(fmt.Sprintf("Error while retrieving media with id: %d", mediaID))
+				s.l.Error().Err(result.Error).Msgf("Error while retrieving media with id: %d", mediaID)
 				ec <- result.Error
 				return
 			}
 			result = tx.Delete(&media)
 			if result.Error != nil {
-				s.l.Error().Err(result.Error).Msg(fmt.Sprintf("Error while deleting media with id %d", mediaID))
+				s.l.Error().Err(result.Error).Msgf("Error while deleting media with id %d", mediaID)
 				ec <- result.Error
 				return
 			}
