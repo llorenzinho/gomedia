@@ -8,12 +8,13 @@ type StaticCredentials struct {
 }
 
 type MediaStoreConfig struct {
-	BucketName        string
-	StaticCredentials *StaticCredentials
-	SslEnabled        bool
-	Endpoint          string
-	Region            *string
-	TimeoutSeconds    *uint16
+	BucketName                   string
+	StaticCredentials            *StaticCredentials
+	SslEnabled                   bool
+	Endpoint                     string
+	Region                       *string
+	TimeoutSeconds               uint16
+	ContinuousHealthCheckSeconds *uint16
 }
 
 type MediaMeta struct {

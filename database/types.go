@@ -1,6 +1,8 @@
 package database
 
-import "time"
+import (
+	"time"
+)
 
 type Media struct {
 	ID        uint `gorm:"primarykey"`

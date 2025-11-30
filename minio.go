@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/llorenzinho/gomedia/database"
 	"github.com/minio/minio-go/v7"
@@ -37,16 +38,38 @@ func NewMinioMetaStore(config MediaStoreConfig, db *database.MediaService) (*Min
 		return nil, err
 	}
 
-	return &MinioMetaStore{
+	if config.TimeoutSeconds == 0 {
+		config.TimeoutSeconds = 30
+	}
+
+	store := &MinioMetaStore{
 		config: config,
 		client: client,
 		db:     db,
-	}, nil
+	}
+
+	// If continuous health check is enabled, start a goroutine to perform it
+	if config.ContinuousHealthCheckSeconds != nil {
+		interval := *config.ContinuousHealthCheckSeconds
+		go func() {
+			for {
+				err := store.HealthCheck()
+				if err != nil {
+					log.Println("Minio health check failed:", err)
+				}
+				time.Sleep(time.Duration(interval) * time.Second)
+			}
+		}()
+	}
+
+	return store, nil
 }
 
 func (m *MinioMetaStore) saveMedia(data io.Reader, size int64, objectPath string, metaData map[string]string, tags map[string]string) error {
+	ctx, df := context.WithTimeout(context.Background(), time.Duration(m.config.TimeoutSeconds)*time.Second)
+	defer df()
 	_, err := m.client.PutObject(
-		context.Background(), // TODO: manage context
+		ctx,
 		m.config.BucketName,
 		objectPath,
 		data,
@@ -101,8 +124,10 @@ func (m *MinioMetaStore) DeleteMedia(id uint) error {
 	if media == nil {
 		return ErrMediaNotFound{ID: id}
 	}
+	ctx, df := context.WithTimeout(context.Background(), time.Duration(m.config.TimeoutSeconds)*time.Second)
+	defer df()
 	err := m.client.RemoveObject(
-		context.Background(), // TODO: manage context
+		ctx,
 		m.config.BucketName,
 		strconv.Itoa(int(media.ID)),
 		minio.RemoveObjectOptions{},
@@ -117,13 +142,15 @@ func (m *MinioMetaStore) DeleteMedia(id uint) error {
 	return nil
 }
 
-func (m *MinioMetaStore) GetMediaReader(id uint) (*Media, error) {
+func (m *MinioMetaStore) GetMedia(id uint) (*Media, error) {
 	media := m.db.GetMedia(id)
 	if media == nil {
 		return nil, ErrMediaNotFound{ID: id}
 	}
+	ctx, df := context.WithTimeout(context.Background(), time.Duration(m.config.TimeoutSeconds)*time.Second)
+	defer df()
 	object, err := m.client.GetObject(
-		context.Background(), // TODO: manage context
+		ctx,
 		m.config.BucketName,
 		strconv.Itoa(int(media.ID)),
 		minio.GetObjectOptions{},

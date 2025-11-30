@@ -33,7 +33,13 @@ func WithRegion(region string) Option {
 
 func WithTimeoutSeconds(timeout uint16) Option {
 	return func(config *MediaStoreConfig) {
-		config.TimeoutSeconds = &timeout
+		config.TimeoutSeconds = timeout
+	}
+}
+
+func WithContinuousHealthCheck(intervalSeconds uint16) Option {
+	return func(config *MediaStoreConfig) {
+		config.ContinuousHealthCheckSeconds = &intervalSeconds
 	}
 }
 
@@ -56,4 +62,5 @@ func NewMediaStore(
 	default:
 		return nil, ErrUnsupportedMediaProvider{}
 	}
+
 }
