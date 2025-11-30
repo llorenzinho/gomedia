@@ -25,21 +25,21 @@ type mediaService struct {
 
 type dbOption func(*mediaService)
 
-func WithPoolMaxIdleConns(maxIdleConns int) dbOption {
+func withPoolMaxIdleConns(maxIdleConns int) dbOption {
 	return func(s *mediaService) {
 		sqlDB, _ := s.db.DB()
 		sqlDB.SetMaxIdleConns(maxIdleConns)
 	}
 }
 
-func WithPoolMaxOpenConns(maxOpenConns int) dbOption {
+func withPoolMaxOpenConns(maxOpenConns int) dbOption {
 	return func(s *mediaService) {
 		sqlDB, _ := s.db.DB()
 		sqlDB.SetMaxOpenConns(maxOpenConns)
 	}
 }
 
-func WithPoolMaxLifetime(maxLifetime time.Duration) dbOption {
+func withPoolMaxLifetime(maxLifetime time.Duration) dbOption {
 	return func(s *mediaService) {
 		sqlDB, _ := s.db.DB()
 		sqlDB.SetConnMaxLifetime(maxLifetime)

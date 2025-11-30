@@ -19,9 +19,9 @@ func TestMinioHealth(t *testing.T) {
 	defer cleanupDb()
 	dbsvc := newMediaService(
 		postgres.Open(dsn),
-		WithPoolMaxLifetime(10*time.Minute),
-		WithPoolMaxIdleConns(10),
-		WithPoolMaxOpenConns(100),
+		withPoolMaxLifetime(10*time.Minute),
+		withPoolMaxIdleConns(10),
+		withPoolMaxOpenConns(100),
 	)
 
 	endpoint, err := minio.Host(ctx)
@@ -58,9 +58,9 @@ func TestMinioUpload(t *testing.T) {
 	defer cleanupDb()
 	dbsvc := newMediaService(
 		postgres.Open(dsn),
-		WithPoolMaxLifetime(10*time.Minute),
-		WithPoolMaxIdleConns(10),
-		WithPoolMaxOpenConns(100),
+		withPoolMaxLifetime(10*time.Minute),
+		withPoolMaxIdleConns(10),
+		withPoolMaxOpenConns(100),
 	)
 	err := dbsvc.AutoMigrate()
 	if err != nil {
@@ -125,9 +125,9 @@ func TestMinioDelete(t *testing.T) {
 	defer cleanupDb()
 	dbsvc := newMediaService(
 		postgres.Open(dsn),
-		WithPoolMaxLifetime(10*time.Minute),
-		WithPoolMaxIdleConns(10),
-		WithPoolMaxOpenConns(100),
+		withPoolMaxLifetime(10*time.Minute),
+		withPoolMaxIdleConns(10),
+		withPoolMaxOpenConns(100),
 	)
 	err := dbsvc.AutoMigrate()
 	if err != nil {
