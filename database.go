@@ -1,61 +1,69 @@
-package database
+package gomedia
 
 import (
 	"sync"
 	"time"
 
-	"github.com/llorenzinho/gomedia/internal"
 	"github.com/phuslu/log"
 
 	"gorm.io/gorm"
 )
 
-type MediaService struct {
+type MediaEntity struct {
+	ID        uint `gorm:"primarykey"`
+	CreatedAt time.Time
+	Filename  string `gorm:"index"`
+	Size      int64
+	BasePath  *string
+	Check     bool
+}
+
+type mediaService struct {
 	db *gorm.DB
 	l  *log.Logger
 }
 
-type Option func(*MediaService)
+type dbOption func(*mediaService)
 
-func WithPoolMaxIdleConns(maxIdleConns int) Option {
-	return func(s *MediaService) {
+func WithPoolMaxIdleConns(maxIdleConns int) dbOption {
+	return func(s *mediaService) {
 		sqlDB, _ := s.db.DB()
 		sqlDB.SetMaxIdleConns(maxIdleConns)
 	}
 }
 
-func WithPoolMaxOpenConns(maxOpenConns int) Option {
-	return func(s *MediaService) {
+func WithPoolMaxOpenConns(maxOpenConns int) dbOption {
+	return func(s *mediaService) {
 		sqlDB, _ := s.db.DB()
 		sqlDB.SetMaxOpenConns(maxOpenConns)
 	}
 }
 
-func WithPoolMaxLifetime(maxLifetime time.Duration) Option {
-	return func(s *MediaService) {
+func WithPoolMaxLifetime(maxLifetime time.Duration) dbOption {
+	return func(s *mediaService) {
 		sqlDB, _ := s.db.DB()
 		sqlDB.SetConnMaxLifetime(maxLifetime)
 	}
 }
 
-func NewMediaService(dialect gorm.Dialector, opts ...Option) *MediaService {
+func newMediaService(dialect gorm.Dialector, opts ...dbOption) *mediaService {
 
 	db, err := gorm.Open(dialect, &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
-	svc := &MediaService{db: db, l: internal.GetLogger()}
+	svc := &mediaService{db: db, l: getLogger()}
 	for _, opt := range opts {
 		opt(svc)
 	}
 	return svc
 }
 
-func (s *MediaService) AutoMigrate() error {
-	return s.db.AutoMigrate(&Media{})
+func (s *mediaService) AutoMigrate() error {
+	return s.db.AutoMigrate(&MediaEntity{})
 }
 
-func (s *MediaService) Ping() error {
+func (s *mediaService) Ping() error {
 	sqlDB, err := s.db.DB()
 	if err != nil {
 		return err
@@ -63,9 +71,9 @@ func (s *MediaService) Ping() error {
 	return sqlDB.Ping()
 }
 
-func (s *MediaService) GetMedia(id uint) *Media {
-	media := &Media{}
-	result := s.db.Model(&Media{}).Where(&Media{ID: id, Check: true}).First(media)
+func (s *mediaService) GetMedia(id uint) *MediaEntity {
+	media := &MediaEntity{}
+	result := s.db.Model(&MediaEntity{}).Where(&MediaEntity{ID: id, Check: true}).First(media)
 	if result.Error != nil {
 		s.l.Error().Err(result.Error).Msgf("Failed to get media with id %d", id)
 		return nil
@@ -73,24 +81,24 @@ func (s *MediaService) GetMedia(id uint) *Media {
 	return media
 }
 
-func (s *MediaService) CreateMedia(media *Media) error {
+func (s *mediaService) CreateMedia(media *MediaEntity) error {
 	tx := s.db.Begin()
 	tx.Create(media)
 	tx.Commit()
 	return nil
 }
 
-func (s *MediaService) DeleteMedias(id ...uint) []*Media {
+func (s *mediaService) DeleteMedias(id ...uint) []*MediaEntity {
 	if len(id) == 0 {
 		return nil
 	}
 	wg := sync.WaitGroup{}
 	tx := s.db.Begin()
 	ec := make(chan error, len(id))
-	ms := make([]*Media, 0, len(id))
+	ms := make([]*MediaEntity, 0, len(id))
 	for _, mediaID := range id {
 		wg.Go(func() {
-			var media Media
+			var media MediaEntity
 			result := tx.First(&media, mediaID)
 			if result.Error != nil {
 				s.l.Error().Err(result.Error).Msgf("Error while retrieving media with id: %d", mediaID)
@@ -116,7 +124,7 @@ func (s *MediaService) DeleteMedias(id ...uint) []*Media {
 	return ms
 }
 
-func (s *MediaService) CheckMedia(id uint) error {
-	result := s.db.Model(&Media{}).Where("id = ?", id).Update("check", true)
+func (s *mediaService) CheckMedia(id uint) error {
+	result := s.db.Model(&MediaEntity{}).Where("id = ?", id).Update("check", true)
 	return result.Error
 }

@@ -2,12 +2,10 @@ package gomedia
 
 import (
 	"io"
-
-	"github.com/llorenzinho/gomedia/database"
 )
 
 type mediaSaver interface {
-	SaveMedia(r *io.Reader, meta MediaMeta) (*database.Media, error) // saves media and return its database id
+	SaveMedia(r *io.Reader, meta MediaMeta) (*MediaEntity, error) // saves media and return its database id
 }
 
 type mediaDeleter interface {

@@ -1,9 +1,5 @@
 package gomedia
 
-import (
-	"github.com/llorenzinho/gomedia/database"
-)
-
 type Option func(*MediaStoreConfig)
 
 func WithStaticCredentials(accessKeyID, secretAccessKey string) Option {
@@ -46,7 +42,7 @@ func WithContinuousHealthCheck(intervalSeconds uint16) Option {
 func NewMediaStore(
 	provider mediaProvider,
 	bucket string,
-	db *database.MediaService,
+	db *mediaService,
 	opts ...Option,
 ) (MediaStorer, error) {
 	config := &MediaStoreConfig{

@@ -1,4 +1,4 @@
-package internal
+package gomedia
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"github.com/phuslu/log"
 )
 
-func GetLogger() *log.Logger {
+func getLogger() *log.Logger {
 	return &log.Logger{
 		Level: log.InfoLevel,
 		Writer: &log.ConsoleWriter{

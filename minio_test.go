@@ -1,4 +1,4 @@
-package gomedia_test
+package gomedia
 
 import (
 	"context"
@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/llorenzinho/gomedia"
-	"github.com/llorenzinho/gomedia/database"
 	"github.com/llorenzinho/gomedia/testutils"
 	"gorm.io/driver/postgres"
 )
@@ -19,11 +17,11 @@ func TestMinioHealth(t *testing.T) {
 	defer cleanup()
 	_, dsn, cleanupDb := testutils.CreateDatabase(t)
 	defer cleanupDb()
-	dbsvc := database.NewMediaService(
+	dbsvc := newMediaService(
 		postgres.Open(dsn),
-		database.WithPoolMaxLifetime(10*time.Minute),
-		database.WithPoolMaxIdleConns(10),
-		database.WithPoolMaxOpenConns(100),
+		WithPoolMaxLifetime(10*time.Minute),
+		WithPoolMaxIdleConns(10),
+		WithPoolMaxOpenConns(100),
 	)
 
 	endpoint, err := minio.Host(ctx)
@@ -35,12 +33,12 @@ func TestMinioHealth(t *testing.T) {
 		t.Fatalf("failed to get minio port: %v", err)
 	}
 
-	m, err := gomedia.NewMediaStore(
-		gomedia.MediaProviderMinio,
+	m, err := NewMediaStore(
+		MediaProviderMinio,
 		"test-bucket",
 		dbsvc,
-		gomedia.WithEndpoint(endpoint+":"+port.Port()),
-		gomedia.WithStaticCredentials("minioadmin", "minioadmin"),
+		WithEndpoint(endpoint+":"+port.Port()),
+		WithStaticCredentials("minioadmin", "minioadmin"),
 	)
 	if err != nil {
 		t.Fatalf("failed to create minio media store: %v", err)
@@ -58,11 +56,11 @@ func TestMinioUpload(t *testing.T) {
 
 	_, dsn, cleanupDb := testutils.CreateDatabase(t)
 	defer cleanupDb()
-	dbsvc := database.NewMediaService(
+	dbsvc := newMediaService(
 		postgres.Open(dsn),
-		database.WithPoolMaxLifetime(10*time.Minute),
-		database.WithPoolMaxIdleConns(10),
-		database.WithPoolMaxOpenConns(100),
+		WithPoolMaxLifetime(10*time.Minute),
+		WithPoolMaxIdleConns(10),
+		WithPoolMaxOpenConns(100),
 	)
 	err := dbsvc.AutoMigrate()
 	if err != nil {
@@ -78,20 +76,20 @@ func TestMinioUpload(t *testing.T) {
 		t.Fatalf("failed to get minio port: %v", err)
 	}
 
-	m, err := gomedia.NewMediaStore(
-		gomedia.MediaProviderMinio,
+	m, err := NewMediaStore(
+		MediaProviderMinio,
 		"test-bucket",
 		dbsvc,
-		gomedia.WithEndpoint(endpoint+":"+port.Port()),
-		gomedia.WithStaticCredentials("minioadmin", "minioadmin"),
+		WithEndpoint(endpoint+":"+port.Port()),
+		WithStaticCredentials("minioadmin", "minioadmin"),
 	)
 	if err != nil {
 		t.Fatalf("failed to create minio media store: %v", err)
 	}
 
 	content := "Hello, MinIO!"
-	media := gomedia.Media{
-		MediaMeta: gomedia.MediaMeta{
+	media := Media{
+		MediaMeta: MediaMeta{
 			Name: "hello.txt",
 		},
 		Reader: strings.NewReader(content),
@@ -125,11 +123,11 @@ func TestMinioDelete(t *testing.T) {
 
 	_, dsn, cleanupDb := testutils.CreateDatabase(t)
 	defer cleanupDb()
-	dbsvc := database.NewMediaService(
+	dbsvc := newMediaService(
 		postgres.Open(dsn),
-		database.WithPoolMaxLifetime(10*time.Minute),
-		database.WithPoolMaxIdleConns(10),
-		database.WithPoolMaxOpenConns(100),
+		WithPoolMaxLifetime(10*time.Minute),
+		WithPoolMaxIdleConns(10),
+		WithPoolMaxOpenConns(100),
 	)
 	err := dbsvc.AutoMigrate()
 	if err != nil {
@@ -145,20 +143,20 @@ func TestMinioDelete(t *testing.T) {
 		t.Fatalf("failed to get minio port: %v", err)
 	}
 
-	m, err := gomedia.NewMediaStore(
-		gomedia.MediaProviderMinio,
+	m, err := NewMediaStore(
+		MediaProviderMinio,
 		"test-bucket",
 		dbsvc,
-		gomedia.WithEndpoint(endpoint+":"+port.Port()),
-		gomedia.WithStaticCredentials("minioadmin", "minioadmin"),
+		WithEndpoint(endpoint+":"+port.Port()),
+		WithStaticCredentials("minioadmin", "minioadmin"),
 	)
 	if err != nil {
 		t.Fatalf("failed to create minio media store: %v", err)
 	}
 
 	content := "Hello, MinIO!"
-	media := gomedia.Media{
-		MediaMeta: gomedia.MediaMeta{
+	media := Media{
+		MediaMeta: MediaMeta{
 			Name: "hello.txt",
 		},
 		Reader: strings.NewReader(content),

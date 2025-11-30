@@ -1,10 +1,9 @@
-package database_test
+package gomedia
 
 import (
 	"testing"
 	"time"
 
-	"github.com/llorenzinho/gomedia/database"
 	"github.com/llorenzinho/gomedia/testutils"
 	"gorm.io/driver/postgres"
 )
@@ -13,11 +12,11 @@ func TestDatabaseConnection(t *testing.T) {
 	_, dsn, cleanup := testutils.CreateDatabase(t)
 	defer cleanup()
 
-	dbsvc := database.NewMediaService(
+	dbsvc := newMediaService(
 		postgres.Open(dsn),
-		database.WithPoolMaxLifetime(10*time.Minute),
-		database.WithPoolMaxIdleConns(10),
-		database.WithPoolMaxOpenConns(100),
+		WithPoolMaxLifetime(10*time.Minute),
+		WithPoolMaxIdleConns(10),
+		WithPoolMaxOpenConns(100),
 	)
 	err := dbsvc.AutoMigrate()
 	if err != nil {
@@ -33,14 +32,14 @@ func TestMediaCreation(t *testing.T) {
 	_, dsn, cleanup := testutils.CreateDatabase(t)
 	defer cleanup()
 
-	dbsvc := database.NewMediaService(
+	dbsvc := newMediaService(
 		postgres.Open(dsn),
 	)
 	err := dbsvc.AutoMigrate()
 	if err != nil {
 		t.Fatalf("failed to migrate database: %v", err)
 	}
-	media := &database.Media{
+	media := &MediaEntity{
 		Filename: "testfile.jpg",
 		Size:     2048,
 		Check:    true,
@@ -64,11 +63,11 @@ func TestMediaCreation(t *testing.T) {
 	}
 
 	// Create multiple media
-	media2 := &database.Media{
+	media2 := &MediaEntity{
 		Filename: "file2.png",
 		Size:     4096,
 	}
-	media3 := &database.Media{
+	media3 := &MediaEntity{
 		Filename: "file3.mp4",
 		Size:     8192,
 	}
@@ -80,7 +79,7 @@ func TestMediaCreation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create media: %v", err)
 	}
-	for i, m := range []*database.Media{media2, media3} {
+	for i, m := range []*MediaEntity{media2, media3} {
 		if m.ID == 0 {
 			t.Fatalf("expected media ID to be set for media %d, got 0", i)
 		}

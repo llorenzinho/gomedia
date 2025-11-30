@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/llorenzinho/gomedia/database"
-	"github.com/llorenzinho/gomedia/internal"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/phuslu/log"
@@ -17,11 +15,11 @@ import (
 type MinioMetaStore struct {
 	config MediaStoreConfig
 	client *minio.Client
-	db     *database.MediaService
+	db     *mediaService
 	l      *log.Logger
 }
 
-func NewMinioMetaStore(config MediaStoreConfig, db *database.MediaService) (*MinioMetaStore, error) {
+func NewMinioMetaStore(config MediaStoreConfig, db *mediaService) (*MinioMetaStore, error) {
 	if db == nil {
 		return nil, ErrNilDatabaseService{}
 	}
@@ -48,7 +46,7 @@ func NewMinioMetaStore(config MediaStoreConfig, db *database.MediaService) (*Min
 		config: config,
 		client: client,
 		db:     db,
-		l:      internal.GetLogger(),
+		l:      getLogger(),
 	}
 
 	// If continuous health check is enabled, start a goroutine to perform it
@@ -91,13 +89,13 @@ func (m *MinioMetaStore) HealthCheck() error {
 	return err
 }
 
-func (m *MinioMetaStore) SaveMedia(r *io.Reader, meta MediaMeta) (*database.Media, error) {
+func (m *MinioMetaStore) SaveMedia(r *io.Reader, meta MediaMeta) (*MediaEntity, error) {
 	buf := &bytes.Buffer{}
 	size, err := io.Copy(buf, *r)
 	if err != nil {
 		return nil, err
 	}
-	mediaEntity := &database.Media{
+	mediaEntity := &MediaEntity{
 		Filename: meta.Name,
 		Size:     size,
 		Check:    false,
