@@ -65,7 +65,7 @@ func (s *MediaService) Ping() error {
 
 func (s *MediaService) GetMedia(id uint) *Media {
 	media := &Media{}
-	result := s.db.First(media, id)
+	result := s.db.Model(&Media{}).Where(&Media{ID: id, Check: true}).First(media)
 	if result.Error != nil {
 		s.l.Error().Err(result.Error).Msgf("Failed to get media with id %d", id)
 		return nil

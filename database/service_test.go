@@ -43,6 +43,7 @@ func TestMediaCreation(t *testing.T) {
 	media := &database.Media{
 		Filename: "testfile.jpg",
 		Size:     2048,
+		Check:    true,
 	}
 	err = dbsvc.CreateMedia(media)
 	if err != nil {
