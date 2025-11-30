@@ -4,19 +4,21 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log"
 	"strconv"
 	"time"
 
 	"github.com/llorenzinho/gomedia/database"
+	"github.com/llorenzinho/gomedia/internal"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/phuslu/log"
 )
 
 type MinioMetaStore struct {
 	config MediaStoreConfig
 	client *minio.Client
 	db     *database.MediaService
+	l      *log.Logger
 }
 
 func NewMinioMetaStore(config MediaStoreConfig, db *database.MediaService) (*MinioMetaStore, error) {
@@ -46,6 +48,7 @@ func NewMinioMetaStore(config MediaStoreConfig, db *database.MediaService) (*Min
 		config: config,
 		client: client,
 		db:     db,
+		l:      internal.GetLogger(),
 	}
 
 	// If continuous health check is enabled, start a goroutine to perform it
@@ -55,7 +58,7 @@ func NewMinioMetaStore(config MediaStoreConfig, db *database.MediaService) (*Min
 			for {
 				err := store.HealthCheck()
 				if err != nil {
-					log.Println("Minio health check failed:", err)
+					store.l.Error().Err(err).Msg("Minio health check failed")
 				}
 				time.Sleep(time.Duration(interval) * time.Second)
 			}
@@ -101,18 +104,18 @@ func (m *MinioMetaStore) SaveMedia(r *io.Reader, meta MediaMeta) (*database.Medi
 	}
 	err = m.db.CreateMedia(mediaEntity)
 	if err != nil {
-		log.Println("Failed to create media", err)
+		m.l.Error().Err(err).Msg("Failed to create media")
 		return nil, err
 	}
 	// upload the buffered content; original reader is already consumed
 	err = m.saveMedia(bytes.NewReader(buf.Bytes()), size, strconv.Itoa(int(mediaEntity.ID)), meta.MetaData, nil)
 	if err != nil {
-		log.Println("Failed to upload media in minio: ", err)
+		m.l.Error().Err(err).Msg("Failed to upload media in minio: ")
 		return nil, err
 	}
 	err = m.db.CheckMedia(mediaEntity.ID)
 	if err != nil {
-		log.Println("Failed to update media check status: ", err)
+		m.l.Error().Err(err).Msg("Failed to update media check status: ")
 		return nil, err
 	}
 
@@ -158,11 +161,17 @@ func (m *MinioMetaStore) GetMedia(id uint) (*Media, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	buffer := bytes.Buffer{}
+	_, err = io.Copy(&buffer, object)
+	if err != nil {
+		return nil, err
+	}
 	return &Media{
 		MediaMeta: MediaMeta{
 			Name:     media.Filename,
 			MetaData: map[string]string{},
 		},
-		Reader: object,
+		Reader: bytes.NewReader(buffer.Bytes()),
 	}, nil
 }

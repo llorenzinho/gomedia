@@ -1,15 +1,19 @@
 package database
 
 import (
-	"log"
+	"fmt"
 	"sync"
 	"time"
+
+	"github.com/llorenzinho/gomedia/internal"
+	"github.com/phuslu/log"
 
 	"gorm.io/gorm"
 )
 
 type MediaService struct {
 	db *gorm.DB
+	l  *log.Logger
 }
 
 type Option func(*MediaService)
@@ -41,7 +45,7 @@ func NewMediaService(dialect gorm.Dialector, opts ...Option) *MediaService {
 	if err != nil {
 		panic("failed to connect database")
 	}
-	svc := &MediaService{db: db}
+	svc := &MediaService{db: db, l: internal.GetLogger()}
 	for _, opt := range opts {
 		opt(svc)
 	}
@@ -61,13 +65,13 @@ func (s *MediaService) Ping() error {
 }
 
 func (s *MediaService) GetMedia(id uint) *Media {
-	var media Media
-	result := s.db.First(&media, id)
+	media := &Media{}
+	result := s.db.First(media, id)
 	if result.Error != nil {
-		log.Println("Error while retrieving media with id", id, ":", result.Error)
+		s.l.Error().Err(result.Error).Msg(fmt.Sprintf("Failed to get media with id %d", id))
 		return nil
 	}
-	return &media
+	return media
 }
 
 func (s *MediaService) CreateMedia(media *Media) error {
@@ -90,13 +94,13 @@ func (s *MediaService) DeleteMedias(id ...uint) []*Media {
 			var media Media
 			result := tx.First(&media, mediaID)
 			if result.Error != nil {
-				log.Println("Error while retrieving media with id", mediaID, ":", result.Error)
+				s.l.Error().Err(result.Error).Msg(fmt.Sprintf("Error while retrieving media with id: %d", mediaID))
 				ec <- result.Error
 				return
 			}
 			result = tx.Delete(&media)
 			if result.Error != nil {
-				log.Println("Error while deleting media with id", mediaID, ":", result.Error)
+				s.l.Error().Err(result.Error).Msg(fmt.Sprintf("Error while deleting media with id %d", mediaID))
 				ec <- result.Error
 				return
 			}

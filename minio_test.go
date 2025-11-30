@@ -102,13 +102,13 @@ func TestMinioUpload(t *testing.T) {
 		t.Fatalf("failed to save media: %v", err)
 	}
 
-	retrievedMedia, err := m.GetMedia(cm.ID)
+	rm, err := m.GetMedia(cm.ID)
 	if err != nil {
 		t.Fatalf("failed to get media reader: %v", err)
 	}
 
 	buf := new(strings.Builder)
-	_, err = io.Copy(buf, retrievedMedia.Reader)
+	_, err = io.Copy(buf, rm.Reader)
 	if err != nil {
 		t.Fatalf("failed to read media content: %v", err)
 	}
